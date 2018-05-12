@@ -1,5 +1,14 @@
 
-## Workflow
+
+# WDL Workflow for standard UofA RNAseq pipeline
+
+# Jimmy Breen (jimmymbreen@gmail.com)
+
+## Runs:
+##  - Trimming using AdapterRemoval
+##  - Mapping using STAR
+##  - Pseudomapping using kallisto
+##  - Quant using featureCounts
 
 workflow standard_rnaseq_quant {
 
@@ -13,28 +22,30 @@ workflow standard_rnaseq_quant {
     String STARindexDir
 
     # Data
-    # fastqs_R1: fastq.gz files for Read1 (only these if single-ended)
-    Array[File] fastqs_R1
-    # fastqs_R2: fastq.gz files for Read2 (omit if single-ended) in order
-    # corresponding to fastqs_R1
-    Array[File] fastqs_R2 = []
+    File sampleinfo
+    String datadir
+    Array[String] sample_name = read_lines(sampleinfo)
 
-    String sample_name
-    Array[Array[File]] fastqs_ = if length(fastqs_R2)>0 then transpose([fastqs_R1, fastqs_R2]) else transpose([fastqs_R1])
-
-    scatter (i in range(length(fastqs_))) {
+    scatter(idx in range(length(sample_name))) {
         call AdapterRemoval_Trim {
             input:
                 AdapterRemoval = AdapterRemoval,
-                sample_name = sample_name,
-                fastqs = fastqs_[i]
+                sample_name = sample_name[idx],
+                fastq_read1 = datadir+'/'+sample_name[idx]+"_R1.fastq.gz",
+                fastq_read2 = datadir+'/'+sample_name[idx]+"_R2.fastq.gz",
             }
+        call rnaseq_kallisto {
+            input:
+                ref_genome = kallisto_ref_index,
+                sample_name = sample_name[idx],
+                fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
+        }
 
         call rnaseq_star_map {
             input:
                 STAR = STAR,
                 STARindexDir = STARindexDir,
-                sample_name = sample_name,
+                sample_name = sample_name[idx],
                 fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
             }
 
@@ -42,7 +53,7 @@ workflow standard_rnaseq_quant {
             input:
                 featureCounts = featureCounts,
                 annotation_file = annotation_file,
-                sample_name = sample_name,
+                sample_name = sample_name[idx],
                 in_bam = rnaseq_star_map.out_bam
             }
     }
@@ -53,12 +64,14 @@ workflow standard_rnaseq_quant {
 task AdapterRemoval_Trim {
     File AdapterRemoval
     String sample_name
-    Array[File] fastqs
+    File fastq_read1
+    File fastq_read2
     Int cpu=28
 
     command {
-        ${AdapterRemoval} --file1 fastqs[0]
-            --file2 fastqs[1]
+        module load AdapterRemoval/2.2.0-foss-2016a
+        ${AdapterRemoval} --file1 fastq_read1 \
+            --file2 fastq_read2 \
             --output1 ${sample_name}_T1.fastq.gz \
             --output2 ${sample_name}_T2.fastq.gz \
             --trimns --trimqualities --gzip
@@ -134,5 +147,34 @@ task rnaseq_featureCounts_quant {
 
     runtime {
         cpu: cpu
+    }
+}
+
+task QuantPairedEndNoBam {
+    Array[File] fastqs
+    File index  # kallisto index, output of Kallisto.Mkref task
+    String sample_name
+    Int cpu=28
+
+    command {
+    kallisto quant \
+      --index "${index}" \
+      --output-dir . \
+      --bootstrap-samples 100 \
+      --threads ${cpu} \
+      fastqs[0] fastqs[1]
+    mv abundance.h5 "${sample_name}.abundance.h5"
+    mv abundance.tsv "${sample_name}.abundance.tsv"
+    mv run_info.json "${sample_name}.run_info.json"
+    }
+
+    runtime {
+      cpu: cpu
+    }
+
+    output {
+        File abundance_h5 = "${sample_name}.abundance.h5"
+        File abundance_tsv = "${sample_name}.abundance.tsv"
+        File log = "${sample_name}.run_info.json"
     }
 }
