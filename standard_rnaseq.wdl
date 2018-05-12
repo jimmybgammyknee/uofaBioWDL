@@ -10,6 +10,10 @@
 ##  - Pseudomapping using kallisto
 ##  - Quant using featureCounts
 
+## Validated the workflow using wdltool
+## - And made acyclic graph using:
+# dot <(wdltool graph standard_rnaseq.wdl) -Tpdf > standard_rnaseq_wdl_validate.pdf
+
 workflow standard_rnaseq_quant {
 
     # Tools
@@ -36,7 +40,7 @@ workflow standard_rnaseq_quant {
             }
         call rnaseq_kallisto {
             input:
-                ref_genome = kallisto_ref_index,
+                index = kallisto_ref_index,
                 sample_name = sample_name[idx],
                 fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
         }
@@ -150,7 +154,7 @@ task rnaseq_featureCounts_quant {
     }
 }
 
-task QuantPairedEndNoBam {
+task rnaseq_kallisto {
     Array[File] fastqs
     File index  # kallisto index, output of Kallisto.Mkref task
     String sample_name
