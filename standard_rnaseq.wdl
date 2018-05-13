@@ -19,6 +19,7 @@ workflow standard_rnaseq_quant {
     # Tools
     File AdapterRemoval
     File STAR
+    File kallisto
     File featureCounts
 
     # Annotation and indexes
@@ -30,20 +31,26 @@ workflow standard_rnaseq_quant {
     File sampleinfo
     String datadir
     Array[String] sample_name = read_lines(sampleinfo)
+    File rawfastq_read1
+    File rawfastq_read2
+    File trim_fastqR1
+    File trim_fastqR2
 
     scatter(idx in range(length(sample_name))) {
         call AdapterRemoval_Trim {
             input:
                 AdapterRemoval = AdapterRemoval,
                 sample_name = sample_name[idx],
-                fastq_read1 = datadir+'/'+sample_name[idx]+"_1.fastq.gz",
-                fastq_read2 = datadir+'/'+sample_name[idx]+"_2.fastq.gz",
+                rawfastq_read1 = datadir+'/'+sample_name[idx]+"_1.fastq.gz",
+                rawfastq_read2 = datadir+'/'+sample_name[idx]+"_2.fastq.gz",
             }
         call rnaseq_kallisto {
             input:
+                kallisto = kallisto,
                 index = index,
                 sample_name = sample_name[idx],
-                fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
+                trim_fastqR1 = AdapterRemoval_Trim.out_trim_R1,
+                trim_fastqR2 = AdapterRemoval_Trim.out_trim_R2
         }
 
         call rnaseq_star_map {
@@ -51,7 +58,8 @@ workflow standard_rnaseq_quant {
                 STAR = STAR,
                 STARindexDir = STARindexDir,
                 sample_name = sample_name[idx],
-                fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
+                trim_fastqR1 = AdapterRemoval_Trim.out_trim_R1,
+                trim_fastqR2 = AdapterRemoval_Trim.out_trim_R2
             }
 
         call rnaseq_featureCounts_quant {
@@ -69,14 +77,14 @@ workflow standard_rnaseq_quant {
 task AdapterRemoval_Trim {
     File AdapterRemoval
     String sample_name
-    File fastq_read1
-    File fastq_read2
+    File rawfastq_read1
+    File rawfastq_read2
     Int cpu=1
 
     command {
         module load AdapterRemoval/2.2.0-foss-2016a
-        ${AdapterRemoval} --file1 ${fastq_read1} \
-            --file2 ${fastq_read2} \
+        ${AdapterRemoval} --file1 ${rawfastq_read1} \
+            --file2 ${rawfastq_read2} \
             --output1 ${sample_name}_T1.fastq.gz \
             --output2 ${sample_name}_T2.fastq.gz \
             --trimns --trimqualities --gzip
@@ -84,7 +92,8 @@ task AdapterRemoval_Trim {
 
     output {
         # nice little hack from the ENCODE guys
-        Array[File] trimmed_merged_fastqs = glob("merge_fastqs_R?_*.fastq.gz")
+        out_trim_R1 = "${sample_name}_T1.fastq.gz"
+        out_trim_R2 = "${sample_name}_T2.fastq.gz"
         }
 
     runtime {
@@ -97,17 +106,16 @@ task rnaseq_star_map {
     File STAR
     String STARindexDir
     String sample_name
-    Array[File] fastqs
-    #String suffix="Aligned.sortedByCoord.out"
-    #This is STAR's suffix and cannot change:
-    #String suffix="Aligned.sortedByCoord.out"
-    #String genome="hg19"
+    File trim_fastqR1
+    File trim_fastqR1
+    String suffix="Aligned.sortedByCoord.out"
+    String genome="hg19"
     Int cpu=1
 
     command {
         ln -s ${STARindexDir} GenomeDir
         # Add alignment directory for outfiles?
-        ${STAR} --readFilesIn fastqs[0] fastqs[1] \
+        ${STAR} --readFilesIn ${trim_fastqR1} ${trim_fastqR2} \
                 --readFilesCommand zcat \
                 --outFilterType BySJout \
                 --alignSJoverhangMin 8 \
@@ -115,14 +123,14 @@ task rnaseq_star_map {
                 --outFilterMismatchNmax 999 \
                 --outSAMtype BAM SortedByCoordinate \
                 --outFileNamePrefix ${sample_name} \
-                --outSAMattrRGline ID:${sample_name} LB:library PL:illumina PU:machine SM:hg19 \
+                --outSAMattrRGline ID:${sample_name} LB:library PL:illumina PU:machine SM:${genome} \
                 --twopassMode Basic \
                 --outSAMmapqUnique 60 \
                 --runThreadN ${cpu}
         }
 
     output {
-        File out_bam = glob("*.bam")[0]
+        File out_bam = "${sample_name}.${genome}.${suffix}.bam"
     }
     runtime {
         cpu: cpu
@@ -156,18 +164,20 @@ task rnaseq_featureCounts_quant {
 }
 
 task rnaseq_kallisto {
-    Array[File] fastqs
+    File kallisto
+    File trim_fastqR1
+    File trim_fastqR2
     File index
     String sample_name
     Int cpu=4
 
     command {
-    kallisto quant \
+    ${kallisto} quant \
       --index "${index}" \
       --output-dir . \
       --bootstrap-samples 100 \
       --threads ${cpu} \
-      fastqs[0] fastqs[1]
+      ${trim_fastqR1} ${trim_fastqR2}
     mv abundance.h5 "${sample_name}.abundance.h5"
     mv abundance.tsv "${sample_name}.abundance.tsv"
     mv run_info.json "${sample_name}.run_info.json"
