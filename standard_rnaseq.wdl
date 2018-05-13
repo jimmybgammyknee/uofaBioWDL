@@ -75,8 +75,8 @@ task AdapterRemoval_Trim {
 
     command {
         module load AdapterRemoval/2.2.0-foss-2016a
-        ${AdapterRemoval} --file1 fastq_read1 \
-            --file2 fastq_read2 \
+        ${AdapterRemoval} --file1 ${fastq_read1} \
+            --file2 ${fastq_read2} \
             --output1 ${sample_name}_T1.fastq.gz \
             --output2 ${sample_name}_T2.fastq.gz \
             --trimns --trimqualities --gzip
@@ -100,8 +100,8 @@ task rnaseq_star_map {
     Array[File] fastqs
     #String suffix="Aligned.sortedByCoord.out"
     #This is STAR's suffix and cannot change:
-    String suffix="Aligned.sortedByCoord.out"
-    String genome="hg19"
+    #String suffix="Aligned.sortedByCoord.out"
+    #String genome="hg19"
     Int cpu=4
 
     command {
