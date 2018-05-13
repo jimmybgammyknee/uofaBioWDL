@@ -36,8 +36,8 @@ workflow standard_rnaseq_quant {
             input:
                 AdapterRemoval = AdapterRemoval,
                 sample_name = sample_name[idx],
-                fastq_read1 = datadir+'/'+sample_name[idx]+"_R1.fastq.gz",
-                fastq_read2 = datadir+'/'+sample_name[idx]+"_R2.fastq.gz",
+                fastq_read1 = datadir+'/'+sample_name[idx]+"_1.fastq.gz",
+                fastq_read2 = datadir+'/'+sample_name[idx]+"_2.fastq.gz",
             }
         call rnaseq_kallisto {
             input:
@@ -71,7 +71,7 @@ task AdapterRemoval_Trim {
     String sample_name
     File fastq_read1
     File fastq_read2
-    Int cpu=28
+    Int cpu=4
 
     command {
         module load AdapterRemoval/2.2.0-foss-2016a
@@ -102,7 +102,7 @@ task rnaseq_star_map {
     #This is STAR's suffix and cannot change:
     String suffix="Aligned.sortedByCoord.out"
     String genome="hg19"
-    Int cpu=28
+    Int cpu=4
 
     command {
         ln -s ${STARindexDir} GenomeDir
@@ -135,7 +135,7 @@ task rnaseq_featureCounts_quant {
     File annotation_file
     String sample_name
     File in_bam
-    Int cpu=28
+    Int cpu=4
 
     command {
         ${featureCounts} -a ${annotation_file} \
@@ -159,7 +159,7 @@ task rnaseq_kallisto {
     Array[File] fastqs
     File index
     String sample_name
-    Int cpu=28
+    Int cpu=4
 
     command {
     kallisto quant \
