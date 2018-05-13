@@ -92,8 +92,8 @@ task AdapterRemoval_Trim {
 
     output {
         # nice little hack from the ENCODE guys
-        out_trim_R1 = "${sample_name}_T1.fastq.gz"
-        out_trim_R2 = "${sample_name}_T2.fastq.gz"
+        File out_trim_R1 = "${sample_name}_T1.fastq.gz"
+        File out_trim_R2 = "${sample_name}_T2.fastq.gz"
         }
 
     runtime {
