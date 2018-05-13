@@ -41,7 +41,7 @@ workflow standard_rnaseq_quant {
             }
         call rnaseq_kallisto {
             input:
-                index = kallisto_ref_index,
+                index = index,
                 sample_name = sample_name[idx],
                 fastqs = AdapterRemoval_Trim.trimmed_merged_fastqs
         }
@@ -157,7 +157,7 @@ task rnaseq_featureCounts_quant {
 
 task rnaseq_kallisto {
     Array[File] fastqs
-    File index 
+    File index
     String sample_name
     Int cpu=28
 
