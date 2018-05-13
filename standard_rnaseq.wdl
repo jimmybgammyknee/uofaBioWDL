@@ -71,7 +71,7 @@ task AdapterRemoval_Trim {
     String sample_name
     File fastq_read1
     File fastq_read2
-    Int cpu=4
+    Int cpu=1
 
     command {
         module load AdapterRemoval/2.2.0-foss-2016a
@@ -102,7 +102,7 @@ task rnaseq_star_map {
     #This is STAR's suffix and cannot change:
     #String suffix="Aligned.sortedByCoord.out"
     #String genome="hg19"
-    Int cpu=4
+    Int cpu=1
 
     command {
         ln -s ${STARindexDir} GenomeDir
@@ -135,7 +135,7 @@ task rnaseq_featureCounts_quant {
     File annotation_file
     String sample_name
     File in_bam
-    Int cpu=4
+    Int cpu=1
 
     command {
         ${featureCounts} -a ${annotation_file} \
