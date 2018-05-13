@@ -24,6 +24,7 @@ workflow standard_rnaseq_quant {
     # Annotation and indexes
     File annotation_file
     String STARindexDir
+    File index
 
     # Data
     File sampleinfo
@@ -156,7 +157,7 @@ task rnaseq_featureCounts_quant {
 
 task rnaseq_kallisto {
     Array[File] fastqs
-    File index  # kallisto index, output of Kallisto.Mkref task
+    File index 
     String sample_name
     Int cpu=28
 
