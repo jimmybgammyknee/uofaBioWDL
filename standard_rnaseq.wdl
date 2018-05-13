@@ -107,7 +107,7 @@ task rnaseq_star_map {
     String STARindexDir
     String sample_name
     File trim_fastqR1
-    File trim_fastqR1
+    File trim_fastqR2
     String suffix="Aligned.sortedByCoord.out"
     String genome="hg19"
     Int cpu=1
