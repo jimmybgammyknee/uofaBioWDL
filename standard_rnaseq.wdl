@@ -31,8 +31,6 @@ workflow standard_rnaseq_quant {
     File sampleinfo
     String datadir
     Array[String] sample_name = read_lines(sampleinfo)
-    File rawfastq_read1
-    File rawfastq_read2
 
     scatter(idx in range(length(sample_name))) {
         call AdapterRemoval_Trim {
