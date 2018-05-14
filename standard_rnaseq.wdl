@@ -109,9 +109,8 @@ task rnaseq_star_map {
     Int cpu=1
 
     command {
-        ln -s ${STARindexDir} GenomeDir
-        # Add alignment directory for outfiles?
-        ${STAR} --readFilesIn ${trim_fastqR1} ${trim_fastqR2} \
+        ${STAR} --genomeDir ${STARindexDir} \
+		--readFilesIn ${trim_fastqR1} ${trim_fastqR2} \
                 --readFilesCommand zcat \
                 --outFilterType BySJout \
                 --alignSJoverhangMin 8 \
@@ -168,16 +167,17 @@ task rnaseq_kallisto {
     Int cpu=4
 
     command {
-    ${kallisto} quant \
-      --index "${index}" \
-      --output-dir . \
-      --bootstrap-samples 100 \
-      --threads ${cpu} \
-      ${trim_fastqR1} ${trim_fastqR2}
-    mv abundance.h5 "${sample_name}.abundance.h5"
-    mv abundance.tsv "${sample_name}.abundance.tsv"
-    mv run_info.json "${sample_name}.run_info.json"
-    }
+	LD_LIBRARY_PATH=/localscratch/Programs/bcbio/anaconda/envs/workflow_exec/lib:$LD_LIBRARY_PATH
+    	${kallisto} quant \
+      		--index "${index}" \
+      		--output-dir . \
+      		--bootstrap-samples 100 \
+      		--threads ${cpu} \
+      		${trim_fastqR1} ${trim_fastqR2}
+    	mv abundance.h5 "${sample_name}.abundance.h5"
+    	mv abundance.tsv "${sample_name}.abundance.tsv"
+    	mv run_info.json "${sample_name}.run_info.json"
+	}
 
     runtime {
       cpu: cpu
